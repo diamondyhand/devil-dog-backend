@@ -1,0 +1,3 @@
+# Change the file name .env example with .env.
+# Open command window and run npm i
+# then run npm run dev
