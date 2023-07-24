@@ -1,8 +1,0 @@
-PORT = 8080
-
-POSTGRE_USER = 'postgres'
-POSTGRE_HOST_URL = '127.0.0.1'
-#POSTGRE_HOST_URL = 'designbook-db.czbyicel2hzp.eu-west-2.rds.amazonaws.com' //mainnet db
-POSTGRE_DATABASE = 'postgres'
-POSTGRE_PASSWORD = 'russ'
-POSTGRE_PORT = 5432
