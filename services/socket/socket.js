@@ -20,6 +20,7 @@ class SocketEngine {
             socket.on('battle', (data) => {
                 console.log('battle')
                 const _data = JSON.parse(data);
+                console.log({_data})
                 // console.log("battle sub page entered.", { _data });
                 socketManager.enterRoom(socket, socket.id, _data.address, _data.battleType);
                 socket.battleType = _data.battleType;
