@@ -2,6 +2,7 @@
 const SocketManager = require('./socketManager');
 
 const socketManager = new SocketManager;
+const SOCKET_CONSTS = require('./sockProc');
 
 class SocketEngine {
     constructor(io) {
@@ -11,23 +12,22 @@ class SocketEngine {
         this.init();
     }
     async init() {
-        console.log('#init');
-        console.log('Server socket created');
+        // console.log('#init');
+        // console.log('Server socket created');
         this.io.on('connection', function (socket) {
-            console.log('a client created');
-            console.log(socket.id);
+            // console.log('a client created');
+            // console.log(socket.id);
             // socket.emit('transaction', 'adfasdfasdfas');
-            socket.on('battle', (data) => {
-                console.log('battle')
+            socket.on(SOCKET_CONSTS.JOIN_BATTLE, (data) => {
+                // console.log('battle')
                 const _data = JSON.parse(data);
-                console.log({_data})
                 // console.log("battle sub page entered.", { _data });
                 socketManager.enterRoom(socket, socket.id, _data.address, _data.battleType);
                 socket.battleType = _data.battleType;
                 // console.log(socket.battleType);
             })
             socket.on('quitBattle', (data) => {
-                console.log('quit battle')
+                // console.log('quit battle')
                 const _data = JSON.parse(data);
                 // console.log("battle sub page entered.", { _data });
                 socketManager.quitRoom(socket, socket.id, _data.address, _data.battleType);
@@ -41,7 +41,7 @@ class SocketEngine {
                 socketManager.pitReady(_data);
                 socket.emit('pitReadyAccepted', JSON.stringify({success: true}))
             })
-            socket.on('quitPit', (data)=>{
+            socket.on(SOCKET_CONSTS.QUIT_ROOM, (data)=>{
                 const _data= JSON.parse(data);
                 socketManager.quitPit(_data);
                 // socket.emit('pitReadyAccepted', JSON.stringify({success: true}))
@@ -51,8 +51,8 @@ class SocketEngine {
                 socketManager.turnCard(_data);
             })
             socket.on('disconnect', () => {
-                console.log('A client disconnected.', socket.id);
-                console.log('a client disconnected', socket.id);
+                // console.log('A client disconnected.', socket.id);
+                // console.log('a client disconnected', socket.id);
                 socketManager.disconnect(socket.id, socket.battleType);
 
             })

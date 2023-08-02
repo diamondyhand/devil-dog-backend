@@ -1,5 +1,5 @@
 const { add } = require("winston");
-const { Room } = require("../../models");
+const SOCKET_CONSTS = require('./sockProc');
 
 class SocketManager {
     constructor() {
@@ -7,48 +7,36 @@ class SocketManager {
         this.battles = {}; // productId : [address]
         this.pits = {};
     }
-    async enterRoom(socket, id, address, battleType) {
+    enterRoom(socket, id, address, battleType) {
         // this.products.address = productId;
-        console.log('id', battleType)
         if (!address) return;
         this.sockets[id] = socket;
         if (this.battles[battleType]) {
             for (const itr of this.battles[battleType]) {
-                this.sockets[itr.id].emit('newJoiner', JSON.stringify({ address }))
+                this.sockets[itr.id].emit(SOCKET_CONSTS.ADD_PLAYER, JSON.stringify({ address }))
             }
         }
 
         this.battles[battleType] = this.battles[battleType] ? [...this.battles[battleType], { id, address }] : [{ id, address }];
-        // let pits = [];
-        // for (let pit in this.pits) {
-        //     if (pit.startsWith(battleType)) {
-        //         const _pit = this.pits[pit];
-        //         // console.log(_pit.creater?.nft);
-        //         pits.push({
-        //             id: pit,
-        //             address1: _pit.creater ? _pit.creater.address : 'empty',
-        //             address2: _pit.joiner ? _pit.joiner.address : 'empty',
-        //             nftUrl1: (_pit.creater && _pit.creater.nft) ? _pit.creater.nft.nft.img : '',
-        //             nftUrl2: (_pit.joiner && _pit.joiner.nft) ? _pit.joiner.nft.nft.img : '',
-        //             status: _pit.pitStatus,
-        //             visitorNumber: 0
-        //         });
-        //     }
-        // }
-        const pits = await Room.find({
-            battleType,
-            pitStatus: false
-        });
-        socket.emit("joiners", JSON.stringify({ joiners: this.battles[battleType], _pits: pits.map(pit => ({
-                id: pit.roomId,
-                address1: pit?.creater?.address,
-                address2: pit?.joiner?.address,
-                nftUrl1: pit?.creater?.nft?.img,
-                nftUrl2: pit?.joiner?.nft?.img,
-                status: pit.pitStatus,
-                visitorNumber: 0
-            })) 
-        }));
+        let pits = [];
+        for (let pit in this.pits) {
+            if (pit.startsWith(battleType)) {
+                const _pit = this.pits[pit];
+                console.log(_pit)
+                // console.log(_pit.creater?.nft);
+                pits.push({
+                    id: pit,
+                    address1: _pit.creater ? _pit.creater.address : 'empty',
+                    address2: _pit.joiner ? _pit.joiner.address : 'empty',
+                    nftUrl1: (_pit.creater && _pit.creater.nft) ? _pit.creater.nft.nft.img : '',
+                    nftUrl2: (_pit.joiner && _pit.joiner.nft) ? _pit.joiner.nft.nft.img : '',
+                    status: _pit.pitStatus,
+                    visitorNumber: 0
+                });
+            }
+        }
+        // console.log(pits);
+        socket.emit(SOCKET_CONSTS.GET_PLAYERS, JSON.stringify({ joiners: this.battles[battleType], _pits: pits }));
     }
     quitRoom(socket, id, address, battleType) {
         if (this.battles[battleType])
@@ -58,42 +46,11 @@ class SocketManager {
                 this.sockets[itr.id].emit('quitBattle', JSON.stringify({ address }))
             }
         }
-        console.log(this.battles);
+        // console.log(this.battles);
         delete this.sockets[id];
     }
-    async createPit(data, socketId) {
-        const { roomId, address, battleType } = data;
-        const room = await Room.findOne({
-            roomId
-        });
-
-        if (!room) {
-            this.sockets[socketId].emit('pitCreated', JSON.stringify({ 
-                creater: {
-                    address,
-                    socketId,
-                    nft: null,
-                    hp: 0,
-                    status: false,
-                },
-                joiner: null,
-                pitStatus: false,
-            }));
-
-            const roomSchema = new Room({
-                creater: {
-                    address,
-                    socketId,
-                    status: false
-                },
-                pitStatus: false,
-                roomId,
-                battleType
-            });
-    
-            return await roomSchema.save();
-        }
-
+    createPit(data, socketId) {
+        const { roomId, address } = data;
         this.pits[roomId] = {
             creater: {
                 address,
@@ -105,69 +62,75 @@ class SocketManager {
             joiner: null,
             pitStatus: false,
         }
+        // this.sockets[socketId].emit('pitCreated', JSON.stringify({ ...this.pits[roomId] }));
+
     }
-    async confirmPit(data, socketId) {
+    confirmPit(data, socketId) {
         const { roomId } = data;
-        let room = await Room.findOne({
-            roomId
-        });
-        if (room) {
+        if (this.pits[roomId]) {
             this.joinPit(data, socketId);
         } else {
-            room = await this.createPit(data, socketId);
+            this.createPit(data, socketId);
         }
         const battleType = roomId.split('_')[0];
+        const _pit = this.pits[roomId];
         for (let item of this.battles[battleType]) {
             if (item && item.id) {
-                console.log(item.id);
+                // console.log(item.id);
                 this.sockets[item.id].emit('newPit', JSON.stringify({
                     newPit: {
                         id: roomId,
-                        address1: room?.creater?.address,
-                        address2: room?.joiner?.address,
-                        nftUrl1: room?.creater?.nft?.img,
-                        nftUrl2: room?.joiner?.nft?.img,
-                        status: room.pitStatus,
+                        address1: _pit.creater ? _pit.creater.address : 'empty',
+                        address2: _pit.joiner ? _pit.joiner.address : 'empty',
+                        nftUrl1: (_pit.creater && _pit.creater.nft) ? _pit.creater.nft.nft.img : '',
+                        nftUrl2: (_pit.joiner && _pit.joiner.nft) ? _pit.joiner.nft.nft.img : '',
+                        status: _pit.pitStatus,
                         visitorNumber: 0
                     }
                 }))
             }
         }
     }
-    async joinPit(data, socketId) {
+    joinPit(data, socketId) {
+        console.log("join", data)
         const { roomId, address } = data;
-        console.log({ socketId });
-        console.log(this.pits);
-        const room = await Room.findOne({
-            roomId
-        });
-        if (room.creater && room.joiner) {
+        // console.log({ socketId });
+        // console.log(this.pits);
+        // console.log('creterSocketId,', this.pits[roomId].creater.socketId);
+        console.log(this.pits[roomId])
+        if (this.pits[roomId].creater && this.pits[roomId].joiner) {
+            console.log("here")
             if (this.pits[roomId].creater.address === address) {
-                await Room.findOneAndUpdate({ roomId }, {
+                const creater = this.pits[roomId].creater;
+                this.pits[roomId] = {
+                    ...this.pits[roomId],
                     creater: {
-                        ...room.creater,
+                        ...creater,
                         socketId
                     }
-                });
-                if (room.creater && room.creater.socketId) {
-                    this.sockets[room.creater.socketId].emit("createrPit", JSON.stringify(room));
+
+                };
+                if (this.pits[roomId].creater && this.pits[roomId].creater.socketId) {
+                    this.sockets[this.pits[roomId].creater.socketId].emit("createrPit", JSON.stringify({ ...this.pits[roomId] }));
                 }
-                if (room.joiner && room.joiner.socketId && this.sockets[room.joiner.socketId]) {
-                    this.sockets[room.joiner.socketId].emit("joinerPit", JSON.stringify(room));
+                if (this.pits[roomId].joiner && this.pits[roomId].joiner.socketId && this.sockets[this.pits[roomId].joiner.socketId]) {
+                    this.sockets[this.pits[roomId].joiner.socketId].emit("joinerPit", JSON.stringify({ ...this.pits[roomId] }));
                 }
                 return;
-            } else if (room.joiner.address === address) {
-                await Room.findOneAndUpdate({ roomId }, {
+            } else if (this.pits[roomId].joiner.address === address) {
+                const joiner = this.pits[roomId].joiner;
+                this.pits[roomId] = {
+                    ...this.pits[roomId],
                     joiner: {
-                        ...room.joiner,
+                        ...joiner,
                         socketId
                     }
-                });
-                if (room.creater && room.creater.socketId && this.sockets[room.creater.socketId]) {
-                    this.sockets[room.creater.socketId].emit("createrPit", JSON.stringify(room));
+                };
+                if (this.pits[roomId].creater && this.pits[roomId].creater.socketId && this.sockets[this.pits[roomId].creater.socketId]) {
+                    this.sockets[this.pits[roomId].creater.socketId].emit("createrPit", JSON.stringify({ ...this.pits[roomId] }));
                 }
-                if (room.joiner && room.joiner.socketId && this.sockets[room.joiner.socketId]) {
-                    this.sockets[room.joiner.socketId].emit("joinerPit", JSON.stringify(room));
+                if (this.pits[roomId].joiner && this.pits[roomId].joiner.socketId && this.sockets[this.pits[roomId].joiner.socketId]) {
+                    this.sockets[this.pits[roomId].joiner.socketId].emit("joinerPit", JSON.stringify({ ...this.pits[roomId] }));
                 }
                 return;
             } else {
@@ -175,16 +138,19 @@ class SocketManager {
                 return;
             }
         }
-        if (!room.creater) {
-            if (room.joiner.address === address) {
-                await Room.findOneAndUpdate({ roomId }, {
+        if (!this.pits[roomId].creater) {
+            if (this.pits[roomId].joiner.address === address) {
+                const joiner = this.pits[roomId].joiner;
+                this.pits[roomId] = {
+                    ...this.pits[roomId],
                     joiner: {
-                        ...room.joiner,
+                        ...joiner,
                         socketId
                     }
-                });
+                }
             } else {
-                await Room.findOneAndUpdate({ roomId }, {
+                this.pits[roomId] = {
+                    ...this.pits[roomId],
                     creater: {
                         address,
                         socketId,
@@ -192,27 +158,30 @@ class SocketManager {
                         nft: null,
                         status: false,
                     }
-                });
+                }
             }
 
-            if (room.creater && room.creater.socketId) {
-                this.sockets[room.creater.socketId].emit("createrPit", JSON.stringify(room));
+            if (this.pits[roomId].creater && this.pits[roomId].creater.socketId) {
+                this.sockets[this.pits[roomId].creater.socketId].emit("createrPit", JSON.stringify({ ...this.pits[roomId] }));
             }
-            if (room.joiner && room.joiner.socketId) {
-                this.sockets[room.joiner.socketId].emit("joinerPit", JSON.stringify(room));
+            if (this.pits[roomId].joiner && this.pits[roomId].joiner.socketId) {
+                this.sockets[this.pits[roomId].joiner.socketId].emit("joinerPit", JSON.stringify({ ...this.pits[roomId] }));
             }
             return;
         }
-        if (!room.joiner) {
-            if (room.creater.address === address) {
-                await Room.findOneAndUpdate({ roomId }, {
+        if (!this.pits[roomId].joiner) {
+            if (this.pits[roomId].creater.address === address) {
+                const creater = this.pits[roomId].creater;
+                this.pits[roomId] = {
+                    ...this.pits[roomId],
                     creater: {
-                        ...room.creater,
+                        ...creater,
                         socketId
                     }
-                });
+                }
             } else {
-                await Room.findOneAndUpdate({ roomId }, {
+                this.pits[roomId] = {
+                    ...this.pits[roomId],
                     joiner: {
                         address,
                         socketId,
@@ -220,14 +189,14 @@ class SocketManager {
                         nft: null,
                         status: false,
                     }
-                });
+                }
                 // console.log('joiner', this.pits[roomId])
             }
-            if (room.creater && this.pits[roomId].creater.socketId && this.sockets[room.creater.socketId]) {
-                this.sockets[room.creater.socketId].emit("createrPit", JSON.stringify(room));
+            if (this.pits[roomId].creater && this.pits[roomId].creater.socketId && this.sockets[this.pits[roomId].creater.socketId]) {
+                this.sockets[this.pits[roomId].creater.socketId].emit("createrPit", JSON.stringify({ ...this.pits[roomId] }));
             }
-            if (room.joiner && room.joiner.socketId && this.sockets[room.joiner.socketId]) {
-                this.sockets[room.joiner.socketId].emit("joinerPit", JSON.stringify(room));
+            if (this.pits[roomId].joiner && this.pits[roomId].joiner.socketId && this.sockets[this.pits[roomId].joiner.socketId]) {
+                this.sockets[this.pits[roomId].joiner.socketId].emit("joinerPit", JSON.stringify({ ...this.pits[roomId] }));
             }
             return;
         }
@@ -236,7 +205,6 @@ class SocketManager {
     }
     pitReady(data) {
         const { roomId, address, nft } = data;
-        console.log("pitReady", data);
         if (this.pits[roomId].creater && this.pits[roomId].creater.address === address) {
             if (this.pits[roomId].joiner && this.pits[roomId].joiner.status === true) {
                 //first starter
@@ -256,9 +224,9 @@ class SocketManager {
                     },
                     turn: starter,
                 }
-                this.sockets[this.pits[roomId].creater.socketId].emit('pitStart', JSON.stringify({ starter, hp: this.pits[roomId].joiner.hp, nft: this.pits[roomId].joiner.nft }))
-                this.sockets[this.pits[roomId].joiner.socketId].emit('pitStart', JSON.stringify({ starter, hp: this.pits[roomId].creater.hp, nft: this.pits[roomId].creater.nft }))
-                console.log(this.pits[roomId]);
+                this.sockets[this.pits[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ starter, hp: this.pits[roomId].joiner.hp, nft: this.pits[roomId].joiner.nft }))
+                this.sockets[this.pits[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ starter, hp: this.pits[roomId].creater.hp, nft: this.pits[roomId].creater.nft }))
+                // console.log(this.pits[roomId]);
                 setTimeout(() => {
                     this.sendShuffle(starter, this.pits[roomId]);
                 }, 2000)
@@ -307,8 +275,8 @@ class SocketManager {
                     turn: starter,
                 }
 
-                this.sockets[this.pits[roomId].creater.socketId].emit('pitStart', JSON.stringify({ starter, hp: this.pits[roomId].joiner.hp, nft: this.pits[roomId].joiner.nft }))
-                this.sockets[this.pits[roomId].joiner.socketId].emit('pitStart', JSON.stringify({ starter, hp: this.pits[roomId].creater.hp, nft: this.pits[roomId].creater.nft }))
+                this.sockets[this.pits[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ starter, hp: this.pits[roomId].joiner.hp, nft: this.pits[roomId].joiner.nft }))
+                this.sockets[this.pits[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ starter, hp: this.pits[roomId].creater.hp, nft: this.pits[roomId].creater.nft }))
                 setTimeout(() => {
                     this.sendShuffle(starter, this.pits[roomId]);
                 }, 2000)
@@ -336,7 +304,6 @@ class SocketManager {
     }
     sendShuffle(starter, pitStatus) {
         const { creater, joiner } = pitStatus;
-        console.log({ creater, joiner })
         let shuffleArray = [];
         for (let i = 0; i < 6; i++) {
             shuffleArray.push([1, 2, 3, 4].sort(() => Math.random() - 0.5));
@@ -358,18 +325,18 @@ class SocketManager {
             shuffleDuration: 0.3
         }
         if (this.sockets[creater.socketId]) {
-            console.log('shuffleStart')
+            // console.log('shuffleStart')
             // console.log(this.sockets[creater.socketId]);
             this.sockets[creater.socketId].emit("shuffleStart", JSON.stringify(data));
         }
         if (this.sockets[joiner.socketId]) {
-            console.log('shuffleStart')
+            // console.log('shuffleStart')
             this.sockets[joiner.socketId].emit("shuffleStart", JSON.stringify(data));
         }
     }
     turnCard(data) {
         const { card, turnState, roomId, success } = data;
-        console.log('turnCard', data);
+        // console.log('turnCard', data);
         if (turnState === 'creater') {
             if (this.pits[roomId].joiner && this.pits[roomId].joiner.socketId && this.sockets[this.pits[roomId].joiner.socketId]) {
                 this.sockets[this.pits[roomId].joiner.socketId].emit('turnCard', JSON.stringify({
@@ -392,8 +359,7 @@ class SocketManager {
         const { roomId, address } = data;
         console.log("quitPit", data);
         if (this.pits[roomId] && this.pits[roomId].creater && this.pits[roomId].creater.address === address) {
-
-            this.sockets[this.pits[roomId].creater.socketId].emit('quitPit', JSON.stringify({ msg: `${address} quitted this pit` }))
+            this.sockets[this.pits[roomId].creater.socketId].emit(SOCKET_CONSTS.QUIT_ROOM, JSON.stringify({ msg: `${address} quitted this pit` }))
             if(this.pits[roomId].joiner && this.sockets[this.pits[roomId].joiner.socketId]){
                 this.sockets[this.pits[roomId].joiner.socketId].emit('opponentPit', JSON.stringify({ msg: `${address} quitted this pit` }))
             }
@@ -408,7 +374,7 @@ class SocketManager {
 
             this.sockets[this.pits[roomId].joiner.socketId].emit('opponentPit', JSON.stringify({ msg: `${address} quitted this pit` }))
             if(this.pits[roomId].creater && this.sockets[this.pits[roomId].creater.socketId]){
-                this.sockets[this.pits[roomId].creater.socketId].emit('quitPit', JSON.stringify({ msg: `${address} quitted this pit` }))
+                this.sockets[this.pits[roomId].creater.socketId].emit(SOCKET_CONSTS.QUIT_ROOM, JSON.stringify({ msg: `${address} quitted this pit` }))
             }
             this.pits[roomId] = {
                 ...this.pits[roomId],
@@ -421,11 +387,11 @@ class SocketManager {
 
         } else if (this.pits[roomId].joiner === null && this.pits[roomId].creater === null) {
             delete this.pits[roomId];
-            console.log(roomId);
+            // console.log(roomId);
             const battleType = roomId.split('_')[0];
             for (let item of this.battles[battleType]) {
                 if (item && item.id) {
-                    console.log(item.id);
+                    // console.log(item.id);
                     this.sockets[item.id].emit('deletePit', JSON.stringify({ msg: 'pit deleted', roomId: roomId }))
                 }
             }

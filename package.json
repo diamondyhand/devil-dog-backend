@@ -26,7 +26,6 @@
     "express": "^4.18.2",
     "express-ip": "^1.0.4",
     "jsonwebtoken": "^9.0.0",
-    "mongoose": "^7.4.1",
     "nodemon": "^2.0.22",
     "path": "^0.12.7",
     "pg": "^8.11.1",

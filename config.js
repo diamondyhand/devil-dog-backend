@@ -5,7 +5,6 @@ const postgreConfig = {
   host: process.env.POSTGRE_HOST_URL,
   database: process.env.POSTGRE_DATABASE, 
   password: process.env.POSTGRE_PASSWORD,
-  port: process.env.POSTGRE_PORT,
-  mongodb: process.env.MONGODB_URL
+  port: process.env.POSTGRE_PORT
 }
 module.exports = postgreConfig;
