@@ -1,4 +1,5 @@
 const { add } = require("winston");
+const SOCKET_CONSTS = require('./sockProc');
 
 class SocketManager {
     constructor() {
@@ -12,7 +13,7 @@ class SocketManager {
         this.sockets[id] = socket;
         if (this.battles[battleType]) {
             for (const itr of this.battles[battleType]) {
-                this.sockets[itr.id].emit('newJoiner', JSON.stringify({ address }))
+                this.sockets[itr.id].emit(SOCKET_CONSTS.ADD_PLAYER, JSON.stringify({ address }))
             }
         }
 
@@ -21,6 +22,7 @@ class SocketManager {
         for (let pit in this.pits) {
             if (pit.startsWith(battleType)) {
                 const _pit = this.pits[pit];
+                console.log(_pit)
                 // console.log(_pit.creater?.nft);
                 pits.push({
                     id: pit,
@@ -33,8 +35,8 @@ class SocketManager {
                 });
             }
         }
-        console.log(pits);
-        socket.emit("joiners", JSON.stringify({ joiners: this.battles[battleType], _pits: pits }));
+        // console.log(pits);
+        socket.emit(SOCKET_CONSTS.GET_PLAYERS, JSON.stringify({ joiners: this.battles[battleType], _pits: pits }));
     }
     quitRoom(socket, id, address, battleType) {
         if (this.battles[battleType])
@@ -44,7 +46,7 @@ class SocketManager {
                 this.sockets[itr.id].emit('quitBattle', JSON.stringify({ address }))
             }
         }
-        console.log(this.battles);
+        // console.log(this.battles);
         delete this.sockets[id];
     }
     createPit(data, socketId) {
@@ -60,7 +62,7 @@ class SocketManager {
             joiner: null,
             pitStatus: false,
         }
-        this.sockets[socketId].emit('pitCreated', JSON.stringify({ ...this.pits[roomId] }));
+        // this.sockets[socketId].emit('pitCreated', JSON.stringify({ ...this.pits[roomId] }));
 
     }
     confirmPit(data, socketId) {
@@ -74,7 +76,7 @@ class SocketManager {
         const _pit = this.pits[roomId];
         for (let item of this.battles[battleType]) {
             if (item && item.id) {
-                console.log(item.id);
+                // console.log(item.id);
                 this.sockets[item.id].emit('newPit', JSON.stringify({
                     newPit: {
                         id: roomId,
@@ -90,11 +92,14 @@ class SocketManager {
         }
     }
     joinPit(data, socketId) {
+        console.log("join", data)
         const { roomId, address } = data;
-        console.log({ socketId });
-        console.log(this.pits);
-        console.log('creterSocketId,', this.pits[roomId].creater.socketId);
+        // console.log({ socketId });
+        // console.log(this.pits);
+        // console.log('creterSocketId,', this.pits[roomId].creater.socketId);
+        console.log(this.pits[roomId])
         if (this.pits[roomId].creater && this.pits[roomId].joiner) {
+            console.log("here")
             if (this.pits[roomId].creater.address === address) {
                 const creater = this.pits[roomId].creater;
                 this.pits[roomId] = {
@@ -200,7 +205,6 @@ class SocketManager {
     }
     pitReady(data) {
         const { roomId, address, nft } = data;
-        console.log("pitReady", data);
         if (this.pits[roomId].creater && this.pits[roomId].creater.address === address) {
             if (this.pits[roomId].joiner && this.pits[roomId].joiner.status === true) {
                 //first starter
@@ -220,9 +224,9 @@ class SocketManager {
                     },
                     turn: starter,
                 }
-                this.sockets[this.pits[roomId].creater.socketId].emit('pitStart', JSON.stringify({ starter, hp: this.pits[roomId].joiner.hp, nft: this.pits[roomId].joiner.nft }))
-                this.sockets[this.pits[roomId].joiner.socketId].emit('pitStart', JSON.stringify({ starter, hp: this.pits[roomId].creater.hp, nft: this.pits[roomId].creater.nft }))
-                console.log(this.pits[roomId]);
+                this.sockets[this.pits[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ starter, hp: this.pits[roomId].joiner.hp, nft: this.pits[roomId].joiner.nft }))
+                this.sockets[this.pits[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ starter, hp: this.pits[roomId].creater.hp, nft: this.pits[roomId].creater.nft }))
+                // console.log(this.pits[roomId]);
                 setTimeout(() => {
                     this.sendShuffle(starter, this.pits[roomId]);
                 }, 2000)
@@ -271,8 +275,8 @@ class SocketManager {
                     turn: starter,
                 }
 
-                this.sockets[this.pits[roomId].creater.socketId].emit('pitStart', JSON.stringify({ starter, hp: this.pits[roomId].joiner.hp, nft: this.pits[roomId].joiner.nft }))
-                this.sockets[this.pits[roomId].joiner.socketId].emit('pitStart', JSON.stringify({ starter, hp: this.pits[roomId].creater.hp, nft: this.pits[roomId].creater.nft }))
+                this.sockets[this.pits[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ starter, hp: this.pits[roomId].joiner.hp, nft: this.pits[roomId].joiner.nft }))
+                this.sockets[this.pits[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ starter, hp: this.pits[roomId].creater.hp, nft: this.pits[roomId].creater.nft }))
                 setTimeout(() => {
                     this.sendShuffle(starter, this.pits[roomId]);
                 }, 2000)
@@ -300,7 +304,6 @@ class SocketManager {
     }
     sendShuffle(starter, pitStatus) {
         const { creater, joiner } = pitStatus;
-        console.log({ creater, joiner })
         let shuffleArray = [];
         for (let i = 0; i < 6; i++) {
             shuffleArray.push([1, 2, 3, 4].sort(() => Math.random() - 0.5));
@@ -322,18 +325,18 @@ class SocketManager {
             shuffleDuration: 0.3
         }
         if (this.sockets[creater.socketId]) {
-            console.log('shuffleStart')
+            // console.log('shuffleStart')
             // console.log(this.sockets[creater.socketId]);
             this.sockets[creater.socketId].emit("shuffleStart", JSON.stringify(data));
         }
         if (this.sockets[joiner.socketId]) {
-            console.log('shuffleStart')
+            // console.log('shuffleStart')
             this.sockets[joiner.socketId].emit("shuffleStart", JSON.stringify(data));
         }
     }
     turnCard(data) {
         const { card, turnState, roomId, success } = data;
-        console.log('turnCard', data);
+        // console.log('turnCard', data);
         if (turnState === 'creater') {
             if (this.pits[roomId].joiner && this.pits[roomId].joiner.socketId && this.sockets[this.pits[roomId].joiner.socketId]) {
                 this.sockets[this.pits[roomId].joiner.socketId].emit('turnCard', JSON.stringify({
@@ -356,8 +359,7 @@ class SocketManager {
         const { roomId, address } = data;
         console.log("quitPit", data);
         if (this.pits[roomId] && this.pits[roomId].creater && this.pits[roomId].creater.address === address) {
-
-            this.sockets[this.pits[roomId].creater.socketId].emit('quitPit', JSON.stringify({ msg: `${address} quitted this pit` }))
+            this.sockets[this.pits[roomId].creater.socketId].emit(SOCKET_CONSTS.QUIT_ROOM, JSON.stringify({ msg: `${address} quitted this pit` }))
             if(this.pits[roomId].joiner && this.sockets[this.pits[roomId].joiner.socketId]){
                 this.sockets[this.pits[roomId].joiner.socketId].emit('opponentPit', JSON.stringify({ msg: `${address} quitted this pit` }))
             }
@@ -372,7 +374,7 @@ class SocketManager {
 
             this.sockets[this.pits[roomId].joiner.socketId].emit('opponentPit', JSON.stringify({ msg: `${address} quitted this pit` }))
             if(this.pits[roomId].creater && this.sockets[this.pits[roomId].creater.socketId]){
-                this.sockets[this.pits[roomId].creater.socketId].emit('quitPit', JSON.stringify({ msg: `${address} quitted this pit` }))
+                this.sockets[this.pits[roomId].creater.socketId].emit(SOCKET_CONSTS.QUIT_ROOM, JSON.stringify({ msg: `${address} quitted this pit` }))
             }
             this.pits[roomId] = {
                 ...this.pits[roomId],
@@ -385,11 +387,11 @@ class SocketManager {
 
         } else if (this.pits[roomId].joiner === null && this.pits[roomId].creater === null) {
             delete this.pits[roomId];
-            console.log(roomId);
+            // console.log(roomId);
             const battleType = roomId.split('_')[0];
             for (let item of this.battles[battleType]) {
                 if (item && item.id) {
-                    console.log(item.id);
+                    // console.log(item.id);
                     this.sockets[item.id].emit('deletePit', JSON.stringify({ msg: 'pit deleted', roomId: roomId }))
                 }
             }
