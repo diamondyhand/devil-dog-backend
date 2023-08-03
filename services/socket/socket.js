@@ -27,7 +27,7 @@ class SocketEngine {
                 // console.log(socket.battleType);
             })
             socket.on('quitBattle', (data) => {
-                // console.log('quit battle')
+                console.log('quit battle', data)
                 const _data = JSON.parse(data);
                 // console.log("battle sub page entered.", { _data });
                 socketManager.quitRoom(socket, socket.id, _data.address, _data.battleType);
