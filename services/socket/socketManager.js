@@ -50,6 +50,8 @@ class SocketManager {
         delete this.sockets[id];
     }
     createPit(data, socketId) {
+        console.log("Creat Pit", data)
+
         const { roomId, address } = data;
         this.pits[roomId] = {
             creater: {
@@ -66,6 +68,7 @@ class SocketManager {
 
     }
     confirmPit(data, socketId) {
+        console.log("Confirm Pit");
         const { roomId } = data;
         if (this.pits[roomId]) {
             this.joinPit(data, socketId);
@@ -92,7 +95,7 @@ class SocketManager {
         }
     }
     joinPit(data, socketId) {
-        console.log("join", data)
+        console.log("Join Pit", data)
         const { roomId, address } = data;
         // console.log({ socketId });
         // console.log(this.pits);
@@ -204,6 +207,7 @@ class SocketManager {
 
     }
     pitReady(data) {
+        console.log("Pit Ready");
         const { roomId, address, nft } = data;
         if (this.pits[roomId].creater && this.pits[roomId].creater.address === address) {
             if (this.pits[roomId].joiner && this.pits[roomId].joiner.status === true) {
@@ -302,6 +306,63 @@ class SocketManager {
 
         }
     }
+    endTurn(data) { // game  logic (each turn)
+        const { card, turnState, roomId, success } = data;
+
+        const currentState = turnState === 'creater' ? 'joiner' : 'creater';
+
+        if (turnState === 'creater') {
+            if (success === true) {
+                switch (card.label) {
+                    case 'bite':
+                        this.pits[roomId].joiner.hp = this.pits[roomId].joiner.hp - 100;
+                        this.pits[roomId].joiner.nft.hp = this.pits[roomId].joiner.nft.hp - 100;
+                        break;
+                    case 'grab':
+                        this.pits[roomId].joiner.hp = this.pits[roomId].joiner.hp - (this.pits[roomId].joiner.nft.bp / 2);
+                        this.pits[roomId].joiner.nft.hp = this.pits[roomId].joiner.nft.hp - (this.pits[roomId].joiner.nft.bp / 2);
+                        currentState = turnState;
+                        break;
+                    case 'ability':
+
+                        break;
+                    case 'parry':
+
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+        } else {
+            if (success === true) {
+                switch (card.label) {
+                    case 'bite':
+                        this.pits[roomId].creater.hp = this.pits[roomId].creater.hp - 100;
+                        this.pits[roomId].creater.nft.hp = this.pits[roomId].creater.nft.hp - 100;
+                        break;
+                    case 'grab':
+                        this.pits[roomId].creater.hp = this.pits[roomId].creater.hp - (this.pits[roomId].creater.nft.bp / 2);
+                        this.pits[roomId].creater.nft.hp = this.pits[roomId].creater.nft.hp - (this.pits[roomId].creater.nft.bp / 2);
+                        currentState = turnState;
+                        break;
+                    case 'ability':
+
+                        break;
+                    case 'parry':
+
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+        }
+
+        if(this.pits[roomId].joiner.hp === 0 || this.pits[roomId].creater.hp === 0) {
+
+        }
+    }
     sendShuffle(starter, pitStatus) {
         const { creater, joiner } = pitStatus;
         let shuffleArray = [];
@@ -327,40 +388,156 @@ class SocketManager {
         if (this.sockets[creater.socketId]) {
             // console.log('shuffleStart')
             // console.log(this.sockets[creater.socketId]);
+            console.log("Shuffle Cards Data ---- Creator", data);
             this.sockets[creater.socketId].emit("shuffleStart", JSON.stringify(data));
         }
         if (this.sockets[joiner.socketId]) {
             // console.log('shuffleStart')
+            console.log("Shuffle Cards Data ---- Joiner", data);
             this.sockets[joiner.socketId].emit("shuffleStart", JSON.stringify(data));
         }
     }
     turnCard(data) {
         const { card, turnState, roomId, success } = data;
         // console.log('turnCard', data);
+        // console.log(currentState)
+        // const currentState = turnState === 'creater' ? 'joiner' : 'creater';
+
         if (turnState === 'creater') {
+            if (success === true) {
+                switch (card.label) {
+                    case "bite":
+                        this.pits[roomId].joiner.hp = this.pits[roomId].joiner.hp - 100;
+                        this.pits[roomId].joiner.nft.hp = this.pits[roomId].joiner.nft.hp - 100;
+                        break;
+                    case "ability":
+                        this.pits[roomId].joiner.hp = this.pits[roomId].joiner.hp - 200;
+                        this.pits[roomId].joiner.nft.hp = this.pits[roomId].joiner.nft.hp - 200;
+
+                        break;
+                    case "grab":
+                        this.pits[roomId].joiner.hp = this.pits[roomId].joiner.hp - 300;
+                        this.pits[roomId].joiner.nft.hp = this.pits[roomId].joiner.nft.hp - 300;
+
+                        break;
+                    case "parry":
+                        this.pits[roomId].joiner.hp = this.pits[roomId].joiner.hp - 400;
+                        this.pits[roomId].joiner.nft.hp = this.pits[roomId].joiner.nft.hp - 400;
+
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+            this.sockets[this.pits[roomId].creater.socketId].emit("winOrlose", JSON.stringify({
+                hp: {
+                    creater: this.pits[roomId].creater.hp,
+                    joiner: this.pits[roomId].joiner.hp
+                },
+                nft: {
+                    creater: this.pits[roomId].creater.nft,
+                    joiner: this.pits[roomId].joiner.nft
+                }
+            }))
+            this.sockets[this.pits[roomId].joiner.socketId].emit("winOrlose", JSON.stringify({
+                hp: {
+                    creater: this.pits[roomId].creater.hp,
+                    joiner: this.pits[roomId].joiner.hp
+                },
+                nft: {
+                    creater: this.pits[roomId].creater.nft,
+                    joiner: this.pits[roomId].joiner.nft
+                }
+            }))
+
             if (this.pits[roomId].joiner && this.pits[roomId].joiner.socketId && this.sockets[this.pits[roomId].joiner.socketId]) {
                 this.sockets[this.pits[roomId].joiner.socketId].emit('turnCard', JSON.stringify({
                     card,
-                    success,
+                    hp: {
+                        creater: this.pits[roomId].creater.hp,
+                        joiner: this.pits[roomId].joiner.hp
+                    },
+                    nft: {
+                        creater: this.pits[roomId].creater.nft,
+                        joiner: this.pits[roomId].joiner.nft
+                    }
+                    // turnState: this.pits[roomId].joiner
                 }))
             }
+            // this.sendShuffle('joiner', this.pits[roomId]);
             return;
         } else {
+            if (success === true) {
+                switch (card.label) {
+                    case "bite":
+                        this.pits[roomId].creater.hp = this.pits[roomId].creater.hp - 100;
+                        this.pits[roomId].creater.nft.hp = this.pits[roomId].creater.nft.hp - 100;
+                        break;
+                    case "ability":
+                        this.pits[roomId].creater.hp = this.pits[roomId].creater.hp - 200;
+                        this.pits[roomId].creater.nft.hp = this.pits[roomId].creater.nft.hp - 200;
+                        break;
+                    case "grab":
+                        this.pits[roomId].creater.hp = this.pits[roomId].creater.hp - 300;
+                        this.pits[roomId].creater.nft.hp = this.pits[roomId].creater.nft.hp - 300;
+                        break;
+                    case "parry":
+                        this.pits[roomId].creater.hp = this.pits[roomId].creater.hp - 400;
+                        this.pits[roomId].creater.nft.hp = this.pits[roomId].creater.nft.hp - 400;
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+            this.sockets[this.pits[roomId].creater.socketId].emit("winOrlose", JSON.stringify({
+                hp: {
+                    creater: this.pits[roomId].creater.hp,
+                    joiner: this.pits[roomId].joiner.hp
+                },
+                nft: {
+                    creater: this.pits[roomId].creater.nft,
+                    joiner: this.pits[roomId].joiner.nft
+                }
+            }))
+            this.sockets[this.pits[roomId].joiner.socketId].emit("winOrlose", JSON.stringify({
+                hp: {
+                    creater: this.pits[roomId].creater.hp,
+                    joiner: this.pits[roomId].joiner.hp
+                },
+                nft: {
+                    creater: this.pits[roomId].creater.nft,
+                    joiner: this.pits[roomId].joiner.nft
+                }
+            }))
+
             if (this.pits[roomId].creater && this.pits[roomId].creater.socketId && this.sockets[this.pits[roomId].creater.socketId]) {
                 this.sockets[this.pits[roomId].creater.socketId].emit('turnCard', JSON.stringify({
-                    card
+                    card,
+                    hp: {
+                        creater: this.pits[roomId].creater.hp,
+                        joiner: this.pits[roomId].joiner.hp
+                    },
+                    nft: {
+                        creater: this.pits[roomId].creater.nft,
+                        joiner: this.pits[roomId].joiner.nft
+                    }
+                    // turnState: currentState
                 }))
             }
+            // this.sendShuffle('creater', this.pits[roomId]);
         }
 
-        const currentState = turnState === 'creater' ? 'joiner' : 'creater';
+
     }
     quitPit(data) {
         const { roomId, address } = data;
+
         console.log("quitPit", data);
         if (this.pits[roomId] && this.pits[roomId].creater && this.pits[roomId].creater.address === address) {
             this.sockets[this.pits[roomId].creater.socketId].emit(SOCKET_CONSTS.QUIT_ROOM, JSON.stringify({ msg: `${address} quitted this pit` }))
-            if(this.pits[roomId].joiner && this.sockets[this.pits[roomId].joiner.socketId]){
+            if (this.pits[roomId].joiner && this.sockets[this.pits[roomId].joiner.socketId]) {
                 this.sockets[this.pits[roomId].joiner.socketId].emit('opponentPit', JSON.stringify({ msg: `${address} quitted this pit` }))
             }
             this.pits[roomId] = {
@@ -368,12 +545,12 @@ class SocketManager {
                 creater: null,
                 pitStatus: false
             }
-            
+
         }
         if (this.pits[roomId] && this.pits[roomId].joiner && this.pits[roomId].joiner.address === address) {
 
             this.sockets[this.pits[roomId].joiner.socketId].emit('opponentPit', JSON.stringify({ msg: `${address} quitted this pit` }))
-            if(this.pits[roomId].creater && this.sockets[this.pits[roomId].creater.socketId]){
+            if (this.pits[roomId].creater && this.sockets[this.pits[roomId].creater.socketId]) {
                 this.sockets[this.pits[roomId].creater.socketId].emit(SOCKET_CONSTS.QUIT_ROOM, JSON.stringify({ msg: `${address} quitted this pit` }))
             }
             this.pits[roomId] = {
