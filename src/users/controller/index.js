@@ -166,7 +166,7 @@ const authUser = async (headers, res) => {
 
     const userId = decoded.user_id;
 
-    console.log(decoded)
+    // console.log(decoded)
 
     const userData =
       'select email, first_name, last_name, birthdate, country from users where id=$1';
