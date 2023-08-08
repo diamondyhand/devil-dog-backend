@@ -16,7 +16,6 @@ class SocketEngine {
         this.io.on('connection', function (socket) {
 
             socket.on(SOCKET_CONSTS.ENTER_BATTLE, (data)=>{
-                console.log("here")
                 const _data = JSON.parse(data)
                 socket.battleType = _data.battleType;
                 socketManager.enterBattle(socket, socket.id, _data.address, _data.battleType);
@@ -24,8 +23,7 @@ class SocketEngine {
 
             socket.on(SOCKET_CONSTS.ENTER_ROOM, (data)=>{
                 const _data = JSON.parse(data)
-                console.log("enter=================")
-                console.log(_data)
+                
                 socket.battleType = _data.battleType;
                 socketManager.enterRoom(socket, socket.id, _data.address, _data.battleType);
             })
@@ -56,9 +54,13 @@ class SocketEngine {
 
             socket.on(SOCKET_CONSTS.SELECT_AC, (data) => {
                 const _data = JSON.parse(data);
-                console.log(_data)
-                socketManager.selectAcitonCard(socket.id, _data);
+                socketManager.selectAcitonCard(_data);
 
+            })
+
+            socket.on(SOCKET_CONSTS.COMPARE_CARD, (data) => {
+                const _data = JSON.parse(data);
+                socketManager.compareCard(_data);
             })
             
 
