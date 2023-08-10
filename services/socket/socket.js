@@ -63,11 +63,6 @@ class SocketEngine {
                 socketManager.compareCard(_data);
             })
             
-
-            socket.on('turnCard', (data)=>{
-                const _data = JSON.parse(data);
-                socketManager.turnCard(_data);
-            })
             socket.on('disconnect', () => {
                 console.log("disconnect")
                 // console.log('A client disconnected.', socket.id);

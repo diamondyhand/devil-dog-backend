@@ -40,7 +40,8 @@ class SocketManager {
     }
 
     enterRoom(socket, id, address, battleType) {
-
+        console.log(address)
+        console.log(this.rooms)
         this.sockets[id] = socket;
         this.battles[battleType] = this.battles[battleType] ? [...this.battles[battleType], { id, address }] : [{ id, address }];
 
@@ -228,9 +229,7 @@ class SocketManager {
         this.sockets[socketId].emit('pitReadyAccepted', JSON.stringify({ success: true }))
         if (this.rooms[roomId].creater && this.rooms[roomId].creater.address === address) {
             if (this.rooms[roomId].joiner && this.rooms[roomId].joiner.status === true) {
-                //first starter
-                const starter = Math.floor(Math.random() * 10) % 2 === 0 ? this.starter = "creater" : 'joiner';
-                //
+                console.log("=============1")
                 const creater = this.rooms[roomId].creater;
                 this.rooms[roomId] = {
                     ...this.rooms[roomId],
@@ -241,18 +240,20 @@ class SocketManager {
                         nft: {
                             ...nft
                         },
-                        hp: nft.hp
+                        hp: nft.hp,
+                        bp: nft.bp,
+                        sp: nft.sp,
+                        ep: nft.ep,
+                        st: nft.st
                     },
-                    turn: starter,
                 }
-                this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ starter, hp: this.rooms[roomId].joiner.hp, nft: this.rooms[roomId].joiner.nft }))
-                this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ starter, hp: this.rooms[roomId].creater.hp, nft: this.rooms[roomId].creater.nft }))
-                // setTimeout(() => {
-                //     this.sendShuffle(starter, this.rooms[roomId]);
-                // }, 2000)
+                this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ hp: this.rooms[roomId].joiner.hp, nft: this.rooms[roomId].joiner.nft }))
+                this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ hp: this.rooms[roomId].creater.hp, nft: this.rooms[roomId].creater.nft }))
 
                 return;
             } else {
+                console.log("=============2")
+
                 const creater = this.rooms[roomId].creater;
                 this.rooms[roomId] = {
                     ...this.rooms[roomId],
@@ -263,11 +264,17 @@ class SocketManager {
                         nft: {
                             ...nft
                         },
-                        hp: nft.hp || 0
+                        hp: nft.hp || 0,
+                        bp: nft.bp || 0,
+                        sp: nft.sp || 0,
+                        ep: nft.ep || 0,
+                        st: nft.st || 0
                     }
 
                 }
                 if (this.rooms[roomId].joiner) {
+                    console.log("=============3")
+
                     this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_READY, JSON.stringify({ hp: this.rooms[roomId].creater.hp, nft: this.rooms[roomId].creater.nft }))
                 }
                 return;
@@ -275,10 +282,9 @@ class SocketManager {
 
         }
         if (this.rooms[roomId].joiner && this.rooms[roomId].joiner.address === address) {
-            if (this.rooms[roomId].creater.status === true) {
 
-                //first starter
-                const starter = Math.floor(Math.random() * 10) % 2 === 0 ? this.starter = "creater" : 'joiner';
+            if (this.rooms[roomId].creater.status === true) {
+                console.log("=============4")
                 //
                 const joiner = this.rooms[roomId].joiner;
                 this.rooms[roomId] = {
@@ -290,18 +296,21 @@ class SocketManager {
                         nft: {
                             ...nft
                         },
-                        hp: nft.hp
+                        hp: nft.hp,
+                        bp: nft.bp,
+                        sp: nft.sp,
+                        ep: nft.ep,
+                        st: nft.st
                     },
-                    turn: starter,
                 }
 
-                this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ starter, hp: this.rooms[roomId].joiner.hp, nft: this.rooms[roomId].joiner.nft }))
-                this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ starter, hp: this.rooms[roomId].creater.hp, nft: this.rooms[roomId].creater.nft }))
-                // setTimeout(() => {
-                //     this.sendShuffle(starter, this.rooms[roomId]);
-                // }, 2000)
+                this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ hp: this.rooms[roomId].joiner.hp, nft: this.rooms[roomId].joiner.nft }))
+                this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ hp: this.rooms[roomId].creater.hp, nft: this.rooms[roomId].creater.nft }))
+
                 return;
             } else {
+                console.log("=============5")
+
                 const joiner = this.rooms[roomId].joiner;
                 this.rooms[roomId] = {
                     ...this.rooms[roomId],
@@ -312,7 +321,11 @@ class SocketManager {
                         nft: {
                             ...nft
                         },
-                        hp: nft.hp || 0
+                        hp: nft.hp || 0,
+                        bp: nft.bp || 0,
+                        sp: nft.sp || 0,
+                        ep: nft.ep || 0,
+                        st: nft.st || 0
                     },
                 }
                 if (this.rooms[roomId].creater && this.rooms[roomId].creater.socketId && this.sockets[this.rooms[roomId].creater.socketId]) {
@@ -330,9 +343,8 @@ class SocketManager {
 
         let shuffleArray = [];
         for (let i = 0; i < 6; i++) {
-            shuffleArray.push([1, 2, 3, 4].sort(() => Math.random() - 0.5));
+            shuffleArray.push([0, 1, 2, 3, 4].sort(() => Math.random() - 0.5));
         }
-        console.log(shuffleArray[5])
         let shuffleCards = shuffleArray[5];
 
         if (this.rooms[roomId].creater.address === address) {
@@ -350,20 +362,74 @@ class SocketManager {
             this.rooms[roomId].creater.time = this.rooms[roomId].creater.time + gameTime;
             this.rooms[roomId].creater.endTurn = true;
             if (cardType === opponentCard) {
+                switch (opponentCard) {
+                    case "bite":
+                        if (this.rooms[roomId].joiner.sp <= 0) {
+                            this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - 20;       // original 1 per sp
+                        } else {
+                            this.rooms[roomId].joiner.sp = this.rooms[roomId].joiner.sp - 2;
+                        }
+                        if (this.rooms[roomId].creater.ep <= 0) {
+                            this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - 10      //original 1
+                        } else {
+                            this.rooms[roomId].creater.ep = this.rooms[roomId].creater.ep - 1;
+                        }
+                        break;
+                    case "grab":
+                        this.rooms[roomId].creater.st = this.rooms[roomId].creater.st + 1;
 
+                        break;
+                    case "flip":
+                        break;
+                    case "mount":
+                        if (this.rooms[roomId].joiner.sp <= 0) {
+                            this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - 100;       //original 2 per sp
+                        } else {
+                            this.rooms[roomId].joiner.sp = this.rooms[roomId].joiner.sp - 5;
+                        }
+                        if (this.rooms[roomId].creater.ep <= 0) {
+                            this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - 20       //original 1 per ep
+                        } else {
+                            this.rooms[roomId].creater.ep = this.rooms[roomId].creater.ep - 2;
+                        }
+                        break;
+                    case "shake":
+                        break;
+
+                    default:
+                        break;
+                }
             } else {
                 switch (opponentCard) {
                     case "bite":
-                        this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - 100;
+                        this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - (this.rooms[roomId].joiner.bp / 10);
+                        if (this.rooms[roomId].joiner.sp <= 0) {
+                            this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - 10
+                        } else {
+                            this.rooms[roomId].joiner.sp = this.rooms[roomId].joiner.sp - 1;
+                        }
+                        if (this.rooms[roomId].creater.ep <= 0) {
+                            this.rooms[roomId].creater.hp = this.rooms[roomId].hp - 20
+                        } else {
+                            this.rooms[roomId].creater.ep = this.rooms[roomId].creater.ep - 2;
+                        }
                         break;
                     case "grab":
-                        this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - 200;
+                        this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - (this.rooms[roomId].joiner.bp * 0.2);
                         break;
-                    case "ability":
-                        this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - 300;
+                    case "flip":
+                        this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - (this.rooms[roomId].joiner.bp* 0.3);
                         break;
-                    case "parry":
-                        this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - 400;
+                    case "mount":
+                        this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - (this.rooms[roomId].joiner.bp * 0.4);
+                        if (this.rooms[roomId].joiner.sp <= 0) {
+                            this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - 100;       //original 2 per sp
+                        } else {
+                            this.rooms[roomId].joiner.sp = this.rooms[roomId].joiner.sp - 5;
+                        }
+                        break;
+                    case "shake":
+                        this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - (this.rooms[roomId].joiner.bp * 0.5);
                         break;
 
                     default:
@@ -375,12 +441,36 @@ class SocketManager {
                     creater: this.rooms[roomId].creater.hp,
                     joiner: this.rooms[roomId].joiner.hp,
                 },
+                sp: {
+                    creater: this.rooms[roomId].creater.sp,
+                    joiner: this.rooms[roomId].joiner.sp,
+                },
+                ep: {
+                    creater: this.rooms[roomId].creater.ep,
+                    joiner: this.rooms[roomId].joiner.ep,
+                },
+                st: {
+                    creater: this.rooms[roomId].creater.st,
+                    joiner: this.rooms[roomId].joiner.st,
+                },
                 endTurn: this.rooms[roomId].creater.endTurn
             }))
             this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
                 hp: {
                     creater: this.rooms[roomId].creater.hp,
-                    joiner: this.rooms[roomId].joiner.hp
+                    joiner: this.rooms[roomId].joiner.hp,
+                },
+                sp: {
+                    creater: this.rooms[roomId].creater.sp,
+                    joiner: this.rooms[roomId].joiner.sp,
+                },
+                ep: {
+                    creater: this.rooms[roomId].creater.ep,
+                    joiner: this.rooms[roomId].joiner.ep,
+                },
+                st: {
+                    creater: this.rooms[roomId].creater.st,
+                    joiner: this.rooms[roomId].joiner.st,
                 },
                 endTurn: this.rooms[roomId].joiner.endTurn
             }))
@@ -390,20 +480,74 @@ class SocketManager {
             this.rooms[roomId].joiner.endTurn = true;
 
             if (cardType === opponentCard) {
+                switch (opponentCard) {
+                    case "bite":
+                        if (this.rooms[roomId].creater.sp <= 0) {
+                            this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - 20;       // original 1 per sp
+                        } else {
+                            this.rooms[roomId].creater.sp = this.rooms[roomId].creater.sp - 2;
+                        }
+                        if (this.rooms[roomId].joiner.ep <= 0) {
+                            this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - 10      //original 1
+                        } else {
+                            this.rooms[roomId].joiner.ep = this.rooms[roomId].joiner.ep - 1;
+                        }
+                        break;
+                    case "grab":
+                        this.rooms[roomId].joiner.st = this.rooms[roomId].joiner.st + 1;
 
+                        break;
+                    case "flip":
+                        break;
+                    case "mount":
+                        if (this.rooms[roomId].creater.sp <= 0) {
+                            this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - 100;       //original 2 per sp
+                        } else {
+                            this.rooms[roomId].creater.sp = this.rooms[roomId].creater.sp - 5;
+                        }
+                        if (this.rooms[roomId].joiner.ep <= 0) {
+                            this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - 20       //original 1 per ep
+                        } else {
+                            this.rooms[roomId].joiner.ep = this.rooms[roomId].joiner.ep - 2;
+                        }
+                        break;
+                    case "shake":
+                        break;
+
+                    default:
+                        break;
+                }
             } else {
                 switch (opponentCard) {
                     case "bite":
-                        this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - 100;
+                        this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - (this.rooms[roomId].creater.bp *0.1);
+                        if (this.rooms[roomId].creater.sp <= 0) {
+                            this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - 10
+                        } else {
+                            this.rooms[roomId].creater.sp = this.rooms[roomId].creater.sp - 1;
+                        }
+                        if (this.rooms[roomId].joiner.ep <= 0) {
+                            this.rooms[roomId].joiner.hp = this.rooms[roomId].hp - 20
+                        } else {
+                            this.rooms[roomId].joiner.ep = this.rooms[roomId].joiner.ep - 2;
+                        }
                         break;
                     case "grab":
-                        this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - 200;
+                        this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - (this.rooms[roomId].creater.bp * 0.2);
                         break;
-                    case "ability":
-                        this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - 300;
+                    case "flip":
+                        this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - (this.rooms[roomId].creater.bp * 0.3);
                         break;
-                    case "parry":
-                        this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - 400;
+                    case "mount":
+                        this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - (this.rooms[roomId].creater.bp * 0.4);
+                        if (this.rooms[roomId].creater.sp <= 0) {
+                            this.rooms[roomId].creater.hp = this.rooms[roomId].creater.hp - 100;       //original 2 per sp
+                        } else {
+                            this.rooms[roomId].creater.sp = this.rooms[roomId].creater.sp - 5;
+                        }
+                        break;
+                    case "shake":
+                        this.rooms[roomId].joiner.hp = this.rooms[roomId].joiner.hp - (this.rooms[roomId].creater.bp * 0.5);
                         break;
 
                     default:
@@ -413,29 +557,58 @@ class SocketManager {
             this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
                 hp: {
                     creater: this.rooms[roomId].creater.hp,
-                    joiner: this.rooms[roomId].joiner.hp
+                    joiner: this.rooms[roomId].joiner.hp,
+                },
+                sp: {
+                    creater: this.rooms[roomId].creater.sp,
+                    joiner: this.rooms[roomId].joiner.sp,
+                },
+                ep: {
+                    creater: this.rooms[roomId].creater.ep,
+                    joiner: this.rooms[roomId].joiner.ep,
+                },
+                st: {
+                    creater: this.rooms[roomId].creater.st,
+                    joiner: this.rooms[roomId].joiner.st,
                 },
                 endTurn: this.rooms[roomId].creater.endTurn
             }))
             this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
                 hp: {
                     creater: this.rooms[roomId].creater.hp,
-                    joiner: this.rooms[roomId].joiner.hp
+                    joiner: this.rooms[roomId].joiner.hp,
+                },
+                sp: {
+                    creater: this.rooms[roomId].creater.sp,
+                    joiner: this.rooms[roomId].joiner.sp,
+                },
+                ep: {
+                    creater: this.rooms[roomId].creater.ep,
+                    joiner: this.rooms[roomId].joiner.ep,
+                },
+                st: {
+                    creater: this.rooms[roomId].creater.st,
+                    joiner: this.rooms[roomId].joiner.st,
                 },
                 endTurn: this.rooms[roomId].joiner.endTurn
             }))
         }
-        
+
+
+        // winner or loser
+
         if ((this.rooms[roomId].creater.hp < 0) && (this.rooms[roomId].joiner.hp > 0)) {
             this.rooms[roomId].creater.endTurn = false;
-            this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.WIN_OR_LOSE, JSON.stringify({winner: "joiner", loser: "creater"}));
-            this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.WIN_OR_LOSE, JSON.stringify({winner: "joiner", loser: "creater"}));
+            this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.WIN_OR_LOSE, JSON.stringify({ winner: "joiner", loser: "creater" }));
+            this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.WIN_OR_LOSE, JSON.stringify({ winner: "joiner", loser: "creater" }));
         } else if ((this.rooms[roomId].joiner.hp < 0) && (this.rooms[roomId].creater.hp > 0)) {
             this.rooms[roomId].joiner.endTurn = false;
 
-            this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.WIN_OR_LOSE, JSON.stringify({winner: "creater", loser: "joiner"}));
-            this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.WIN_OR_LOSE, JSON.stringify({winner: "creater", loser: "joiner"}));
+            this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.WIN_OR_LOSE, JSON.stringify({ winner: "creater", loser: "joiner" }));
+            this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.WIN_OR_LOSE, JSON.stringify({ winner: "creater", loser: "joiner" }));
         }
+
+        // repeat turn
         if (this.rooms[roomId].creater.endTurn == true && this.rooms[roomId].joiner.endTurn == true) {
             this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.NEW_TURN);
             this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.NEW_TURN);
