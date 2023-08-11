@@ -40,8 +40,7 @@ class SocketManager {
     }
 
     enterRoom(socket, id, address, battleType) {
-        console.log(address)
-        console.log(this.rooms)
+        console.log("address ====",address)
         this.sockets[id] = socket;
         this.battles[battleType] = this.battles[battleType] ? [...this.battles[battleType], { id, address }] : [{ id, address }];
 
@@ -349,15 +348,19 @@ class SocketManager {
 
         if (this.rooms[roomId].creater.address === address) {
             this.rooms[roomId].creater.time = this.rooms[roomId].creater.time + counterTime;
-            this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards }));
+            this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards, flag: 1 }))
+            this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards, flag: 0 }));
         } else {
             this.rooms[roomId].joiner.time = this.rooms[roomId].joiner.time + counterTime;
-            this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards }));
+            this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards, flag:1 }))
+            this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards, flag: 0 }));
         }
     }
 
     compareCard(data) {
         const { roomId, address, cardType, opponentCard, gameTime } = data;
+
+        console.log(data)
         if (this.rooms[roomId].creater.address === address) {
             this.rooms[roomId].creater.time = this.rooms[roomId].creater.time + gameTime;
             this.rooms[roomId].creater.endTurn = true;
@@ -436,6 +439,7 @@ class SocketManager {
                         break;
                 }
             }
+
             this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
                 hp: {
                     creater: this.rooms[roomId].creater.hp,
@@ -472,7 +476,8 @@ class SocketManager {
                     creater: this.rooms[roomId].creater.st,
                     joiner: this.rooms[roomId].joiner.st,
                 },
-                endTurn: this.rooms[roomId].joiner.endTurn
+                endTurn: this.rooms[roomId].joiner.endTurn,
+                cardType: cardType
             }))
             // this.sockets[this.rooms[roomId].creater.socketId].emit()
         } else {
@@ -571,7 +576,8 @@ class SocketManager {
                     creater: this.rooms[roomId].creater.st,
                     joiner: this.rooms[roomId].joiner.st,
                 },
-                endTurn: this.rooms[roomId].creater.endTurn
+                endTurn: this.rooms[roomId].creater.endTurn,
+                cardType: cardType
             }))
             this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
                 hp: {
@@ -596,12 +602,13 @@ class SocketManager {
 
 
         // winner or loser
+        // console.log(this.rooms[roomId])
 
-        if ((this.rooms[roomId].creater.hp < 0) && (this.rooms[roomId].joiner.hp > 0)) {
+        if ((this.rooms[roomId].creater.hp < 0 || this.rooms[roomId].creater.hp === NaN) && (this.rooms[roomId].joiner.hp > 0)) {
             this.rooms[roomId].creater.endTurn = false;
             this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.WIN_OR_LOSE, JSON.stringify({ winner: "joiner", loser: "creater" }));
             this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.WIN_OR_LOSE, JSON.stringify({ winner: "joiner", loser: "creater" }));
-        } else if ((this.rooms[roomId].joiner.hp < 0) && (this.rooms[roomId].creater.hp > 0)) {
+        } else if ((this.rooms[roomId].joiner.hp < 0 || this.rooms[roomId].joiner.hp === NaN) && (this.rooms[roomId].creater.hp > 0)) {
             this.rooms[roomId].joiner.endTurn = false;
 
             this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.WIN_OR_LOSE, JSON.stringify({ winner: "creater", loser: "joiner" }));
