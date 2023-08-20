@@ -7,6 +7,7 @@ class SocketManager {
         this.battles = {}; // productId : [address]
         this.rooms = {};
         this.allCards = ["bite", "grab", "ability", "parry"];
+        this.roomId = "";
     }
 
     enterBattle(socket, id, address, battleType) {
@@ -64,9 +65,14 @@ class SocketManager {
 
     confirmRoom(data, socketId) {
         const { roomId } = data;
+        this.roomId = roomId;
+        console.log("roomId ====", roomId)
+        // console.log("rooms ====", this.rooms)
         if (this.rooms[roomId]) {
+            console.log("join room ====")
             this.joinPit(data, socketId);
         } else {
+            console.log("create room ====")
             this.createPit(data, socketId);
         }
         // console.log(this.rooms[roomId])
@@ -113,9 +119,11 @@ class SocketManager {
 
     joinPit(data, socketId) {
         // console.log("==================join===================")
-        // console.log(data)
         const { roomId, address } = data;
+        // console.log(this.rooms[roomId])
         if (this.rooms[roomId].creater && this.rooms[roomId].joiner) {
+            console.log("reconnect")
+
             if (this.rooms[roomId].creater.address === address) {
                 const creater = this.rooms[roomId].creater;
                 this.rooms[roomId] = {
@@ -132,6 +140,9 @@ class SocketManager {
                 if (this.rooms[roomId].joiner && this.rooms[roomId].joiner.socketId && this.sockets[this.rooms[roomId].joiner.socketId]) {
                     this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.CONFIRM_JOINER, JSON.stringify({ ...this.rooms[roomId] }));
                 }
+                if (this.rooms[roomId].creater && this.rooms[roomId].creater.socketId && this.sockets[this.rooms[roomId].creater.socketId]) {
+                    this.pitReady({ ...data, "nft" : this.rooms[roomId].creater.nft }, this.rooms[roomId].creater.socketId);
+                }
                 return;
             } else if (this.rooms[roomId].joiner.address === address) {
                 const joiner = this.rooms[roomId].joiner;
@@ -142,11 +153,20 @@ class SocketManager {
                         socketId
                     }
                 };
+                
                 if (this.rooms[roomId].creater && this.rooms[roomId].creater.socketId && this.sockets[this.rooms[roomId].creater.socketId]) {
                     this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.CONFIRM_CREATOR, JSON.stringify({ ...this.rooms[roomId] }));
                 }
                 if (this.rooms[roomId].joiner && this.rooms[roomId].joiner.socketId && this.sockets[this.rooms[roomId].joiner.socketId]) {
                     this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.CONFIRM_JOINER, JSON.stringify({ ...this.rooms[roomId] }));
+                }
+                
+                // this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_READY, JSON.stringify({ hp: this.rooms[roomId].joiner.hp, nft: this.rooms[roomId].joiner.nft }))
+                // this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_READY, JSON.stringify({ hp: this.rooms[roomId].creater.hp, nft: this.rooms[roomId].creater.nft }))
+                // console.log(data)
+                // this.pitReady({ ...data, "nft" : this.rooms[roomId].creater.nft }, this.rooms[roomId].creater.socketId);
+                if (this.rooms[roomId].joiner && this.rooms[roomId].joiner.socketId && this.sockets[this.rooms[roomId].joiner.socketId]) {
+                    this.pitReady({ ...data, "nft" : this.rooms[roomId].joiner.nft }, this.rooms[roomId].joiner.socketId);
                 }
                 return;
             } else {
@@ -154,6 +174,8 @@ class SocketManager {
                 return;
             }
         }
+        // console.log("==================join1===================")
+        // console.log(!this.rooms[roomId].creater)
         if (!this.rooms[roomId].creater) {
             if (this.rooms[roomId].joiner.address === address) {
                 const joiner = this.rooms[roomId].joiner;
@@ -187,6 +209,8 @@ class SocketManager {
             }
             return;
         }
+        // console.log("==================join2===================")
+        // console.log(!this.rooms[roomId].joiner)
         if (!this.rooms[roomId].joiner) {
             if (this.rooms[roomId].creater.address === address) {
                 const creater = this.rooms[roomId].creater;
@@ -218,9 +242,8 @@ class SocketManager {
                 this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.CONFIRM_JOINER, JSON.stringify({ ...this.rooms[roomId] }));
             }
             return;
+        } else {
         }
-
-
     }
 
     pitReady(data, socketId) {
@@ -246,8 +269,11 @@ class SocketManager {
                         st: nft.st
                     },
                 }
-                this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ hp: this.rooms[roomId].joiner.hp, nft: this.rooms[roomId].joiner.nft }))
-                this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ hp: this.rooms[roomId].creater.hp, nft: this.rooms[roomId].creater.nft }))
+
+                if ( this.sockets[this.rooms[roomId].creater.socketId] )
+                    this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ hp: this.rooms[roomId].joiner.hp, nft: this.rooms[roomId].joiner.nft }))
+                if ( this.sockets[this.rooms[roomId].joiner.socketId] )
+                    this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ hp: this.rooms[roomId].creater.hp, nft: this.rooms[roomId].creater.nft }))
 
                 return;
             } else {
@@ -303,8 +329,10 @@ class SocketManager {
                     },
                 }
 
-                this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ hp: this.rooms[roomId].joiner.hp, nft: this.rooms[roomId].joiner.nft }))
-                this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ hp: this.rooms[roomId].creater.hp, nft: this.rooms[roomId].creater.nft }))
+                if ( this.sockets[this.rooms[roomId].creater.socketId] )
+                    this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ hp: this.rooms[roomId].joiner.hp, nft: this.rooms[roomId].joiner.nft }))
+                if ( this.sockets[this.rooms[roomId].joiner.socketId] )
+                    this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_START, JSON.stringify({ hp: this.rooms[roomId].creater.hp, nft: this.rooms[roomId].creater.nft }))
 
                 return;
             } else {
@@ -340,6 +368,7 @@ class SocketManager {
         this.rooms[roomId].creater.endTurn = false;
         this.rooms[roomId].joiner.endTurn = false;
 
+        // console.log("selectAcitonCard => ")
         let shuffleArray = [];
         for (let i = 0; i < 6; i++) {
             shuffleArray.push([0, 1, 2, 3, 4].sort(() => Math.random() - 0.5));
@@ -347,20 +376,36 @@ class SocketManager {
         let shuffleCards = shuffleArray[5];
 
         if (this.rooms[roomId].creater.address === address) {
-            this.rooms[roomId].creater.time = this.rooms[roomId].creater.time + counterTime;
-            this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards, flag: 1 }))
-            this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards, flag: 0 }));
+            // console.log(this.sockets[this.rooms[roomId].joiner.socketId]);
+            if ( this.sockets[this.rooms[roomId].joiner.socketId] ) {
+                this.rooms[roomId].creater.time = this.rooms[roomId].creater.time + counterTime;
+                this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards, flag: 1 }))
+                this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards, flag: 0 }));
+            } else {
+                console.log("joiner disconnected");
+                // this.sockets[this.rooms[roomId].creater.socketId].emit('pitReadyAccepted', JSON.stringify({success: false}))
+                // this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_STOP, JSON.stringify({ hp: this.rooms[roomId].joiner.hp, nft: this.rooms[roomId].joiner.nft }))
+                return;
+                
+            }
         } else {
-            this.rooms[roomId].joiner.time = this.rooms[roomId].joiner.time + counterTime;
-            this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards, flag:1 }))
-            this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards, flag: 0 }));
+            if ( this.sockets[this.rooms[roomId].creater.socketId] ) {
+                this.rooms[roomId].joiner.time = this.rooms[roomId].joiner.time + counterTime;
+                this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards, flag:1 }))
+                this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SELECT_AC, JSON.stringify({ cardType, shuffleCards, flag: 0 }));
+            } else {
+                console.log("creater disconnected");
+                // this.sockets[this.rooms[roomId].joiner.socketId].emit('pitReadyAccepted', JSON.stringify({success: false}))
+                // this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_STOP, JSON.stringify({ hp: this.rooms[roomId].creater.hp, nft: this.rooms[roomId].creater.nft }))
+                return;
+            }
         }
     }
 
     compareCard(data) {
         const { roomId, address, cardType, opponentCard, gameTime } = data;
 
-        console.log(data)
+        // console.log("compareCard => ")
         if (this.rooms[roomId].creater.address === address) {
             this.rooms[roomId].creater.time = this.rooms[roomId].creater.time + gameTime;
             this.rooms[roomId].creater.endTurn = true;
@@ -440,45 +485,52 @@ class SocketManager {
                 }
             }
 
-            this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
-                hp: {
-                    creater: this.rooms[roomId].creater.hp,
-                    joiner: this.rooms[roomId].joiner.hp,
-                },
-                sp: {
-                    creater: this.rooms[roomId].creater.sp,
-                    joiner: this.rooms[roomId].joiner.sp,
-                },
-                ep: {
-                    creater: this.rooms[roomId].creater.ep,
-                    joiner: this.rooms[roomId].joiner.ep,
-                },
-                st: {
-                    creater: this.rooms[roomId].creater.st,
-                    joiner: this.rooms[roomId].joiner.st,
-                },
-                endTurn: this.rooms[roomId].creater.endTurn
-            }))
-            this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
-                hp: {
-                    creater: this.rooms[roomId].creater.hp,
-                    joiner: this.rooms[roomId].joiner.hp,
-                },
-                sp: {
-                    creater: this.rooms[roomId].creater.sp,
-                    joiner: this.rooms[roomId].joiner.sp,
-                },
-                ep: {
-                    creater: this.rooms[roomId].creater.ep,
-                    joiner: this.rooms[roomId].joiner.ep,
-                },
-                st: {
-                    creater: this.rooms[roomId].creater.st,
-                    joiner: this.rooms[roomId].joiner.st,
-                },
-                endTurn: this.rooms[roomId].joiner.endTurn,
-                cardType: cardType
-            }))
+            if ( this.sockets[this.rooms[roomId].joiner.socketId] ) {
+                this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
+                    hp: {
+                        creater: this.rooms[roomId].creater.hp,
+                        joiner: this.rooms[roomId].joiner.hp,
+                    },
+                    sp: {
+                        creater: this.rooms[roomId].creater.sp,
+                        joiner: this.rooms[roomId].joiner.sp,
+                    },
+                    ep: {
+                        creater: this.rooms[roomId].creater.ep,
+                        joiner: this.rooms[roomId].joiner.ep,
+                    },
+                    st: {
+                        creater: this.rooms[roomId].creater.st,
+                        joiner: this.rooms[roomId].joiner.st,
+                    },
+                    endTurn: this.rooms[roomId].creater.endTurn
+                }))
+                this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
+                    hp: {
+                        creater: this.rooms[roomId].creater.hp,
+                        joiner: this.rooms[roomId].joiner.hp,
+                    },
+                    sp: {
+                        creater: this.rooms[roomId].creater.sp,
+                        joiner: this.rooms[roomId].joiner.sp,
+                    },
+                    ep: {
+                        creater: this.rooms[roomId].creater.ep,
+                        joiner: this.rooms[roomId].joiner.ep,
+                    },
+                    st: {
+                        creater: this.rooms[roomId].creater.st,
+                        joiner: this.rooms[roomId].joiner.st,
+                    },
+                    endTurn: this.rooms[roomId].joiner.endTurn,
+                    cardType: cardType
+                }))
+            } else {
+                console.log("joiner disconnected");
+                // this.sockets[this.rooms[roomId].creater.socketId].emit('pitReadyAccepted', JSON.stringify({success: false}))
+                // this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_STOP, JSON.stringify({ hp: this.rooms[roomId].joiner.hp, nft: this.rooms[roomId].joiner.nft }))
+                return;
+            }
             // this.sockets[this.rooms[roomId].creater.socketId].emit()
         } else {
             this.rooms[roomId].joiner.time = this.rooms[roomId].joiner.time + gameTime;
@@ -559,45 +611,53 @@ class SocketManager {
                         break;
                 }
             }
-            this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
-                hp: {
-                    creater: this.rooms[roomId].creater.hp,
-                    joiner: this.rooms[roomId].joiner.hp,
-                },
-                sp: {
-                    creater: this.rooms[roomId].creater.sp,
-                    joiner: this.rooms[roomId].joiner.sp,
-                },
-                ep: {
-                    creater: this.rooms[roomId].creater.ep,
-                    joiner: this.rooms[roomId].joiner.ep,
-                },
-                st: {
-                    creater: this.rooms[roomId].creater.st,
-                    joiner: this.rooms[roomId].joiner.st,
-                },
-                endTurn: this.rooms[roomId].creater.endTurn,
-                cardType: cardType
-            }))
-            this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
-                hp: {
-                    creater: this.rooms[roomId].creater.hp,
-                    joiner: this.rooms[roomId].joiner.hp,
-                },
-                sp: {
-                    creater: this.rooms[roomId].creater.sp,
-                    joiner: this.rooms[roomId].joiner.sp,
-                },
-                ep: {
-                    creater: this.rooms[roomId].creater.ep,
-                    joiner: this.rooms[roomId].joiner.ep,
-                },
-                st: {
-                    creater: this.rooms[roomId].creater.st,
-                    joiner: this.rooms[roomId].joiner.st,
-                },
-                endTurn: this.rooms[roomId].joiner.endTurn
-            }))
+
+            if ( this.sockets[this.rooms[roomId].creater.socketId] ) {
+                this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
+                    hp: {
+                        creater: this.rooms[roomId].creater.hp,
+                        joiner: this.rooms[roomId].joiner.hp,
+                    },
+                    sp: {
+                        creater: this.rooms[roomId].creater.sp,
+                        joiner: this.rooms[roomId].joiner.sp,
+                    },
+                    ep: {
+                        creater: this.rooms[roomId].creater.ep,
+                        joiner: this.rooms[roomId].joiner.ep,
+                    },
+                    st: {
+                        creater: this.rooms[roomId].creater.st,
+                        joiner: this.rooms[roomId].joiner.st,
+                    },
+                    endTurn: this.rooms[roomId].creater.endTurn,
+                    cardType: cardType
+                }))
+                this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.SHOW_RESULT, JSON.stringify({
+                    hp: {
+                        creater: this.rooms[roomId].creater.hp,
+                        joiner: this.rooms[roomId].joiner.hp,
+                    },
+                    sp: {
+                        creater: this.rooms[roomId].creater.sp,
+                        joiner: this.rooms[roomId].joiner.sp,
+                    },
+                    ep: {
+                        creater: this.rooms[roomId].creater.ep,
+                        joiner: this.rooms[roomId].joiner.ep,
+                    },
+                    st: {
+                        creater: this.rooms[roomId].creater.st,
+                        joiner: this.rooms[roomId].joiner.st,
+                    },
+                    endTurn: this.rooms[roomId].joiner.endTurn
+                }))
+            } else {
+                console.log("creater disconnected");
+                // this.sockets[this.rooms[roomId].joiner.socketId].emit('pitReadyAccepted', JSON.stringify({success: false}))
+                // this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_STOP, JSON.stringify({ hp: this.rooms[roomId].creater.hp, nft: this.rooms[roomId].creater.nft }))
+                return;
+            }
         }
 
 
@@ -617,11 +677,10 @@ class SocketManager {
 
         // repeat turn
         if (this.rooms[roomId].creater.endTurn == true && this.rooms[roomId].joiner.endTurn == true) {
+            // console.log("new turn???")
             this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.NEW_TURN);
             this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.NEW_TURN);
         }
-
-
     }
 
     quitBattle(socket, id, address, battleType) {
@@ -629,7 +688,7 @@ class SocketManager {
             this.battles[battleType] = this.battles[battleType].filter(item => item.id !== id);
         if (this.battles[battleType]) {
             for (const itr of this.battles[battleType]) {
-                this.sockets[itr.id].emit('quitBattle', JSON.stringify({ address }))
+                // this.sockets[itr.id].emit('quitBattle', JSON.stringify({ address }))
             }
         }
         delete this.sockets[id];
@@ -678,7 +737,8 @@ class SocketManager {
         // }
         if (!this.rooms[roomId]) {
 
-        } else if (this.rooms[roomId].joiner === null && this.rooms[roomId].creater === null) {
+        // } else if (this.rooms[roomId].joiner === null && this.rooms[roomId].creater === null) {
+        } else if (this.rooms[roomId].creater === null) {
             delete this.rooms[roomId];
             // console.log(roomId);
             const battleType = roomId.split('_')[0];
@@ -700,6 +760,19 @@ class SocketManager {
             this.battles[battleType] = this.battles[battleType].filter(item => item.id !== id);
         }
         // this.products = { ...this.products, ['product_' + productId]: this.products['product_' + productId].filter(_id => _id !== id) };
+
+        console.log("disconnect room id => ", this.roomId)
+        if ( this.roomId != "" && this.rooms[this.roomId].creater && this.rooms[this.roomId].creater.socketId == id ) {
+            console.log("creater disconnected")
+            if ( this.sockets[this.rooms[this.roomId].joiner.socketId] )
+                this.sockets[this.rooms[this.roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_STOP, JSON.stringify({ roomId: this.roomId }))
+        }
+
+        if ( this.roomId != "" && this.rooms[this.roomId].joiner && this.rooms[this.roomId].joiner.socketId == id ) {
+            console.log("joiner disconnected")
+            if ( this.sockets[this.rooms[this.roomId].creater.socketId] )
+                this.sockets[this.rooms[this.roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_STOP, JSON.stringify({ roomId: this.roomId }))
+        }
     }
 }
 

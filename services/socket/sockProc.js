@@ -22,7 +22,8 @@ const SOCKET_CONSTS = {
     COMPARE_CARD: 119,
     SHOW_RESULT: 120,
     NEW_TURN: 121,
-    WIN_OR_LOSE: 122
+    WIN_OR_LOSE: 122,
+    ROOM_STOP: 123,
 }
 
 module.exports = SOCKET_CONSTS ;
