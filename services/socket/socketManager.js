@@ -26,15 +26,17 @@ class SocketManager {
         for (let room in this.rooms) {
             if (room.startsWith(battleType)) {
                 const _room = this.rooms[room];
-                rooms.push({
-                    id: room,
-                    address1: _room.creater ? _room.creater.address : 'empty',
-                    address2: _room.joiner ? _room.joiner.address : 'empty',
-                    nftUrl1: (_room.creater && _room.creater.nft) ? _room.creater.nft.nft.img : '',
-                    nftUrl2: (_room.joiner && _room.joiner.nft) ? _room.joiner.nft.nft.img : '',
-                    status: _room.roomstatus,
-                    visitorNumber: 0
-                });
+                if ( _room.creater && _room.joiner ) {
+                    rooms.push({
+                        id: room,
+                        address1: _room.creater ? _room.creater.address : 'empty',
+                        address2: _room.joiner ? _room.joiner.address : 'empty',
+                        nftUrl1: (_room.creater && _room.creater.nft) ? _room.creater.nft.nft.img : '',
+                        nftUrl2: (_room.joiner && _room.joiner.nft) ? _room.joiner.nft.nft.img : '',
+                        status: _room.roomstatus,
+                        visitorNumber: 0
+                    });
+                }                
             }
         }
         socket.emit(SOCKET_CONSTS.GET_PLAYERS, JSON.stringify({ joiners: this.battles[battleType], _rooms: rooms }));
@@ -176,8 +178,8 @@ class SocketManager {
         }
         // console.log("==================join1===================")
         // console.log(!this.rooms[roomId].creater)
-        if (!this.rooms[roomId].creater) {
-            if (this.rooms[roomId].joiner.address === address) {
+        if ( !this.rooms[roomId].creater ) {
+            if ( this.rooms[roomId].joiner && this.rooms[roomId].joiner.address === address ) {
                 const joiner = this.rooms[roomId].joiner;
                 this.rooms[roomId] = {
                     ...this.rooms[roomId],
@@ -201,18 +203,18 @@ class SocketManager {
                 }
             }
 
-            if (this.rooms[roomId].creater && this.rooms[roomId].creater.socketId) {
+            if ( this.rooms[roomId].creater && this.rooms[roomId].creater.socketId && this.sockets[this.rooms[roomId].creater.socketId] ) {
                 this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.CONFIRM_CREATOR, JSON.stringify({ ...this.rooms[roomId] }));
             }
-            if (this.rooms[roomId].joiner && this.rooms[roomId].joiner.socketId) {
+            if ( this.rooms[roomId].joiner && this.rooms[roomId].joiner.socketId && this.sockets[this.rooms[roomId].joiner.socketId] ) {
                 this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.CONFIRM_JOINER, JSON.stringify({ ...this.rooms[roomId] }));
             }
             return;
         }
         // console.log("==================join2===================")
         // console.log(!this.rooms[roomId].joiner)
-        if (!this.rooms[roomId].joiner) {
-            if (this.rooms[roomId].creater.address === address) {
+        if ( !this.rooms[roomId].joiner ) {
+            if ( this.rooms[roomId].creater && this.rooms[roomId].creater.address === address ) {
                 const creater = this.rooms[roomId].creater;
                 this.rooms[roomId] = {
                     ...this.rooms[roomId],
@@ -235,10 +237,10 @@ class SocketManager {
                     }
                 }
             }
-            if (this.rooms[roomId].creater && this.rooms[roomId].creater.socketId && this.sockets[this.rooms[roomId].creater.socketId]) {
+            if ( this.rooms[roomId].creater && this.rooms[roomId].creater.socketId && this.sockets[this.rooms[roomId].creater.socketId] ) {
                 this.sockets[this.rooms[roomId].creater.socketId].emit(SOCKET_CONSTS.CONFIRM_CREATOR, JSON.stringify({ ...this.rooms[roomId] }));
             }
-            if (this.rooms[roomId].joiner && this.rooms[roomId].joiner.socketId && this.sockets[this.rooms[roomId].joiner.socketId]) {
+            if ( this.rooms[roomId].joiner && this.rooms[roomId].joiner.socketId && this.sockets[this.rooms[roomId].joiner.socketId] ) {
                 this.sockets[this.rooms[roomId].joiner.socketId].emit(SOCKET_CONSTS.CONFIRM_JOINER, JSON.stringify({ ...this.rooms[roomId] }));
             }
             return;
@@ -737,8 +739,9 @@ class SocketManager {
         // }
         if (!this.rooms[roomId]) {
 
-        // } else if (this.rooms[roomId].joiner === null && this.rooms[roomId].creater === null) {
-        } else if (this.rooms[roomId].creater === null) {
+        } else if (this.rooms[roomId].joiner === null && this.rooms[roomId].creater === null) {
+        // } else if (this.rooms[roomId].creater === null) {
+        // } else {
             delete this.rooms[roomId];
             // console.log(roomId);
             const battleType = roomId.split('_')[0];
@@ -748,13 +751,10 @@ class SocketManager {
                     this.sockets[item.id].emit(SOCKET_CONSTS.REMOVE_ROOM, JSON.stringify({ msg: 'room deleted', roomId: roomId }))
                 }
             }
-        } else {
-
         }
 
     }
     disconnect(id, battleType) {
-        // this.rooms[roomId]
         delete this.sockets[id];
         if (battleType && this.battles[battleType] && this.battles[battleType].length > 0) {
             this.battles[battleType] = this.battles[battleType].filter(item => item.id !== id);
@@ -762,15 +762,37 @@ class SocketManager {
         // this.products = { ...this.products, ['product_' + productId]: this.products['product_' + productId].filter(_id => _id !== id) };
 
         console.log("disconnect room id => ", this.roomId)
-        if ( this.roomId != "" && this.rooms[this.roomId].creater && this.rooms[this.roomId].creater.socketId == id ) {
+        if ( this.roomId != "" && this.rooms[this.roomId] && this.rooms[this.roomId].creater && this.rooms[this.roomId].creater.socketId == id ) {
             console.log("creater disconnected")
-            if ( this.sockets[this.rooms[this.roomId].joiner.socketId] )
+            // if ( this.rooms[this.roomId] ) {
+            //     this.rooms[this.roomId] = {
+            //         creater: null,
+            //         roomstatus: false,
+            //     }
+            // }
+
+            if ( this.rooms[this.roomId].joiner && this.sockets[this.rooms[this.roomId].joiner.socketId] )
                 this.sockets[this.rooms[this.roomId].joiner.socketId].emit(SOCKET_CONSTS.ROOM_STOP, JSON.stringify({ roomId: this.roomId }))
         }
 
-        if ( this.roomId != "" && this.rooms[this.roomId].joiner && this.rooms[this.roomId].joiner.socketId == id ) {
+        if ( this.roomId != "" && this.rooms[this.roomId] && this.rooms[this.roomId].joiner && this.rooms[this.roomId].joiner.socketId == id ) {
             console.log("joiner disconnected")
-            if ( this.sockets[this.rooms[this.roomId].creater.socketId] )
+            // if ( this.rooms[this.roomId] ) {
+            //     this.rooms[this.roomId] = {
+            //         joiner: {
+            //             address: 'empty',
+            //             socketId: '',
+            //             nft: null,
+            //             hp: 0,
+            //             status: false,
+            //             time: 0,
+            //             endTurn: false
+            //         },
+            //         roomstatus: false,
+            //     }
+            // }
+
+            if ( this.rooms[this.roomId].creater && this.sockets[this.rooms[this.roomId].creater.socketId] )
                 this.sockets[this.rooms[this.roomId].creater.socketId].emit(SOCKET_CONSTS.ROOM_STOP, JSON.stringify({ roomId: this.roomId }))
         }
     }
